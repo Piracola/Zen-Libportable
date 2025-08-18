@@ -20,29 +20,23 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # 安装7-Zip压缩工具，用于解压文件
+    # 安装7-Zip压缩工具
     - name: Install 7-Zip
       uses: milliewalky/setup-7-zip@v2
 
-    # 下载libportable工具包，用于创建便携版应用
+    # 下载libportable工具包
     - name: Download libportable
       run: |
         curl -L -o portable_bin.7z https://sourceforge.net/projects/libportable/files/Tools/portable_bin.7z/download
       shell: bash
 
-    # 解压libportable工具包到portable_bin目录
-    - name: Extract libportable
-      run: |
-        7z x portable_bin.7z -oportable_bin
-      shell: bash
-
-    # 从Zen官方GitHub仓库下载最新版本的Zen浏览器安装包
+    # 下载Zen浏览器安装包
     - name: Download Zen Browser
       run: |
         curl -L -o zen.installer.exe "https://github.com/zen-browser/desktop/releases/latest/download/zen.installer.exe"
       shell: bash
 
-    # 解压Zen浏览器安装包到根目录
+    # 解压Zen浏览器安装包
     - name: Extract Zen Browser
       run: |
         7z x zen.installer.exe
@@ -59,10 +53,11 @@ jobs:
         ren core Zen
       shell: cmd
       
-    - name: Move libportable files to Zen directory
+    # 将libportable工具包内容解压到Zen文件夹
+    - name: Extract libportable files directly to Zen folder
       run: |
-        xcopy /s /e /y portable_bin\. Zen
-      shell: cmd
+        7z e portable_bin.7z -oZen -y
+      shell: bash
 
     # 使用仓库内的portable.ini文件替代libportable自带的ini文件
     - name: Replace portable.ini with repository version
