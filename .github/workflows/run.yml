@@ -80,7 +80,7 @@ jobs:
 
     # 上传构建完成的便携版Zen浏览器作为构建产物
     - name: Upload Portable Zen Browser as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: portable-zen-browser
         path: Zen/
