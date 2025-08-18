@@ -114,7 +114,7 @@ jobs:
         cd Zen
         echo "Applying portability patch to zen.exe..."
         if exist setdll64.exe (
-          setdll64.exe zen.exe portable64.dll
+          setdll64.exe zen.exe
         ) else (
           echo "setdll64.exe not found! Cannot apply patch."
           exit 1
