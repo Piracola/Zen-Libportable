@@ -66,16 +66,40 @@ jobs:
         ren core Zen
       shell: cmd
       
-    # 从Cache目录将libportable工具包内容解压到Zen文件夹
-    - name: Extract libportable files from Cache to Zen folder
+    # 从Cache目录将libportable工具包内容解压到临时目录
+    - name: Extract libportable files from Cache
       run: |
-        7z e Cache/portable_bin.7z -oZen -y
+        7z x Cache/portable_bin.7z -oportable_temp -y
       shell: bash
+
+    # 检查libportable解压后的文件结构
+    - name: Check libportable files
+      run: |
+        echo "Checking libportable files..."
+        dir portable_temp
+        echo "\nChecking for portable_bin directory..."
+        if exist portable_temp\portable_bin dir portable_temp\portable_bin
+      shell: cmd
+
+    # 复制libportable文件到Zen目录
+    - name: Copy libportable files to Zen directory
+      run: |
+        if exist portable_temp\portable_bin (
+          echo "Found portable_bin directory, copying files..."
+          xcopy /s /e /y portable_temp\portable_bin\* Zen\
+        ) else (
+          echo "No portable_bin directory found, copying all extracted files..."
+          xcopy /s /e /y portable_temp\* Zen\
+        )
+      shell: cmd
 
     # 打印最终目录结构
     - name: Display final directory structure
       run: |
+        echo "Final directory structure:"
         dir
+        echo "\nZen directory contents:"
+        dir Zen
       shell: cmd
 
     # 使用仓库内的portable.ini文件替代libportable自带的ini文件
@@ -84,11 +108,33 @@ jobs:
         copy portable.ini Zen\portable.ini /y
       shell: cmd
 
-    # 执行injectpe.bat脚本，注入便携化相关配置
-    - name: Run injectpe.bat
+    # 检查并执行便携化脚本
+    - name: Run portable configuration script
       run: |
         cd Zen
-        .\injectpe.bat
+        echo "Checking for portable scripts..."
+        dir *.bat 2>nul || echo "No .bat files found"
+        
+        if exist injectpe.bat (
+          echo "Running injectpe.bat..."
+          injectpe.bat
+        ) else if exist portable.bat (
+          echo "Running portable.bat..."
+          portable.bat
+        ) else if exist makeportable.bat (
+          echo "Running makeportable.bat..."
+          makeportable.bat
+        ) else (
+          echo "No portable configuration script found, skipping..."
+        )
+      shell: cmd
+
+    # 清理临时文件
+    - name: Clean up temporary files
+      run: |
+        echo "Cleaning up temporary files..."
+        if exist portable_temp rmdir /s /q portable_temp
+        if exist Cache rmdir /s /q Cache
       shell: cmd
 
     # 上传构建完成的便携版Zen浏览器作为构建产物
