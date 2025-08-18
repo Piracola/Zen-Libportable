@@ -1,11 +1,14 @@
 # 构建便携版Zen浏览器的GitHub工作流
 name: Build Portable Zen Browser
 
-# 触发条件：推送到main分支或手动触发
+# 触发条件：推送到main分支、手动触发或定时检查Zen新版本
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    # 每天UTC时间08:00检查一次Zen浏览器是否有新版本发布
+    - cron: '0 8 * * *'
 
 jobs:
   build:
