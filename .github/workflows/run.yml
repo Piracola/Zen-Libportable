@@ -1,39 +1,42 @@
 # 构建便携版Zen浏览器的GitHub工作流
 name: Build Portable Zen Browser
 
+# 触发条件：推送到main分支、手动触发或定时检查Zen新版本
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
   schedule:
+    # 每天UTC时间08:00检查一次Zen浏览器是否有新版本发布
     - cron: '0 8 * * *'
 
 jobs:
   build:
+    # 使用Windows最新版本作为运行环境
     runs-on: windows-latest
 
     steps:
+    # 检出代码仓库
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    # 安装7-Zip压缩工具
     - name: Install 7-Zip
       uses: milliewalky/setup-7-zip@v2
 
+    # 下载libportable工具包
     - name: Download libportable
       run: |
         curl -L -o portable_bin.7z https://sourceforge.net/projects/libportable/files/Tools/portable_bin.7z/download
       shell: bash
 
-    - name: Extract libportable with full paths
-      run: |
-        7z x portable_bin.7z -oportable_bin -y
-      shell: bash
-
+    # 下载Zen浏览器安装包
     - name: Download Zen Browser
       run: |
         curl -L -o zen.installer.exe "https://github.com/zen-browser/desktop/releases/latest/download/zen.installer.exe"
       shell: bash
 
+    # 解压Zen浏览器安装包
     - name: Extract Zen Browser
       run: |
         7z x zen.installer.exe
@@ -44,34 +47,32 @@ jobs:
         del setup.exe
       shell: cmd
 
+    # 将解压得到的core文件夹重命名为Zen
     - name: Rename core folder to Zen
       run: |
         ren core Zen
       shell: cmd
       
-    # 使用 robocopy 将 libportable 文件合并到 Zen 目录
-    - name: Copy libportable files to Zen directory
+    # 将libportable工具包内容解压到Zen文件夹
+    - name: Extract libportable files directly to Zen folder
       run: |
-        robocopy portable_bin\portable_bin Zen /E
-      shell: cmd
+        7z e portable_bin.7z -oZen -y
+      shell: bash
 
-    # [新增] 清理已复制的源目录
-    - name: Clean up source portable_bin directory
-      run: |
-        rmdir /s /q portable_bin
-      shell: cmd
-
+    # 使用仓库内的portable.ini文件替代libportable自带的ini文件
     - name: Replace portable.ini with repository version
       run: |
         copy portable.ini Zen\portable.ini /y
       shell: cmd
 
+    # 执行injectpe.bat脚本，注入便携化相关配置
     - name: Run injectpe.bat
       run: |
         cd Zen
         .\injectpe.bat
       shell: cmd
 
+    # 上传构建完成的便携版Zen浏览器作为构建产物
     - name: Upload Portable Zen Browser as artifact
       uses: actions/upload-artifact@v4
       with:
