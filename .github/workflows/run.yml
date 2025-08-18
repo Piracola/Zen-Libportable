@@ -33,7 +33,7 @@ jobs:
     # 解压libportable工具包到portable_bin目录
     - name: Extract libportable
       run: |
-        7z x portable_bin.7z -o portable_bin
+        7z x portable_bin.7z -oportable_bin
       shell: bash
 
     # 从Zen官方GitHub仓库下载最新版本的Zen浏览器安装包
