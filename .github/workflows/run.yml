@@ -59,9 +59,9 @@ jobs:
         ren core Zen
       shell: cmd
       
-    - name: Move libportable files to Zen core directory
+    - name: Move libportable files to Zen directory
       run: |
-        xcopy /s /e /y portable_bin\* Zen
+        xcopy /s /e /y portable_bin\. Zen
       shell: cmd
 
     # 使用仓库内的portable.ini文件替代libportable自带的ini文件
