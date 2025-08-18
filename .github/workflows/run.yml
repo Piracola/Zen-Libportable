@@ -33,7 +33,7 @@ jobs:
     # 解压libportable工具包到portable_bin目录
     - name: Extract libportable
       run: |
-        7z x portable_bin.7z -oportable_bin
+        7z x portable_bin.7z -o portable_bin
       shell: bash
 
     # 从Zen官方GitHub仓库下载最新版本的Zen浏览器安装包
@@ -51,7 +51,6 @@ jobs:
     - name: Delete setup.exe
       run: |
         del setup.exe
-        del portable(example).ini
       shell: cmd
 
     # 将解压得到的core文件夹重命名为Zen
@@ -75,7 +74,7 @@ jobs:
     - name: Run injectpe.bat
       run: |
         cd Zen
-        injectpe.bat
+        .\injectpe.bat
       shell: cmd
 
     # 上传构建完成的便携版Zen浏览器作为构建产物
