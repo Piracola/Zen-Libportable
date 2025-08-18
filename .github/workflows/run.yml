@@ -49,10 +49,16 @@ jobs:
         ren core Zen
       shell: cmd
       
-    # [已修正] 使用 robocopy 完整地移动 libportable 的目录结构到 Zen 文件夹
-    - name: Move libportable files to Zen directory
+    # 使用 robocopy 将 libportable 文件合并到 Zen 目录
+    - name: Copy libportable files to Zen directory
       run: |
-        robocopy portable_bin\portable_bin Zen /E /MOVE
+        robocopy portable_bin\portable_bin Zen /E
+      shell: cmd
+
+    # [新增] 清理已复制的源目录
+    - name: Clean up source portable_bin directory
+      run: |
+        rmdir /s /q portable_bin
       shell: cmd
 
     - name: Replace portable.ini with repository version
