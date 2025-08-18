@@ -108,24 +108,16 @@ jobs:
         copy portable.ini Zen\portable.ini /y
       shell: cmd
 
-    # 检查并执行便携化脚本
-    - name: Run portable configuration script
+    # 执行便携化处理
+    - name: Apply portable patch
       run: |
         cd Zen
-        echo "Checking for portable scripts..."
-        dir *.bat 2>nul || echo "No .bat files found"
-        
-        if exist injectpe.bat (
-          echo "Running injectpe.bat..."
-          injectpe.bat
-        ) else if exist portable.bat (
-          echo "Running portable.bat..."
-          portable.bat
-        ) else if exist makeportable.bat (
-          echo "Running makeportable.bat..."
-          makeportable.bat
+        echo "Applying portability patch to zen.exe..."
+        if exist setdll64.exe (
+          setdll64.exe zen.exe portable64.dll
         ) else (
-          echo "No portable configuration script found, skipping..."
+          echo "setdll64.exe not found! Cannot apply patch."
+          exit 1
         )
       shell: cmd
 
