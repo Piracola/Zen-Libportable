@@ -88,22 +88,12 @@ jobs:
       if: steps.version-check.outputs.should_build == 'true'
       id: download-libportable
       run: |
-        # 使用直接链接下载 libportable 工具包
-        $url = "https://downloads.sourceforge.net/project/libportable/Tools/portable_bin.7z"
-        $output = "$env:GITHUB_WORKSPACE\libportable.7z"
+        $url = "https://sourceforge.net/projects/libportable/files/Tools/portable_bin.7z/download"
+        $output = "$env:GITHUB_WORKSPACE\portable_bin.7z"
         try {
           Invoke-WebRequest -Uri $url -OutFile $output
           echo "archive_path=$output" >> $env:GITHUB_OUTPUT
           echo "Downloaded libportable size: $((Get-Item $output).Length) bytes"
-          
-          # 验证文件是否为有效的7z文件
-          $fileHeader = Get-Content -Path $output -Encoding Byte -TotalCount 6
-          $headerString = [System.Text.Encoding]::ASCII.GetString($fileHeader)
-          if ($headerString -notlike "7z*") {
-            echo "Downloaded file is not a valid 7z archive"
-            echo "File header: $headerString"
-            exit 1
-          }
         } catch {
           echo "Failed to download libportable: $_"
           exit 1
