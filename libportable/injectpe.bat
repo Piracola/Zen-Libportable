@@ -81,6 +81,8 @@ REM 根据系统位数删除不匹配的 DLL 和更新程序
 if "%bits%"=="32" del /s/q portable64.dll upcheck64.exe 2>nul 1>nul
 if "%bits%"=="64" del /s/q portable32.dll upcheck32.exe 2>nul 1>nul
 
+if not exist %~dp0portable.ini copy /y %~dp0portable(example).ini %~dp0portable.ini 2>nul 1>nul
+
 REM 自动删除此脚本文件（安全考虑）
 @del /q %0 2>nul 1>nul
 echo 便携版创建完成！
