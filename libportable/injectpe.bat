@@ -2,7 +2,7 @@
 REM Zen 浏览器便携版 DLL 注入脚本 - 自动版本
 REM 此脚本用于将 libportable 的 DLL 文件注入到 Zen 浏览器中，使其变为便携版
 REM 作者：Zen Libportable 项目
-REM 版本：1.0
+REM 版本：1.1
 
 REM 关闭命令回显，使输出更清晰
 @echo off
@@ -36,7 +36,7 @@ goto eof
 REM 32位系统处理分支
 echo ***********************************************************************
 echo *                程序自动注入32位的zen浏览器                      *
-echo *注意!!! 新版本会修复omni.ja文件,不要在同一zen版本上重复运行此脚本*
+echo *注意: 新版本会修复omni.ja文件,不要在同一zen版本上重复运行此脚本*
 echo ***********************************************************************
 echo+
 REM 重命名 32 位更新检查程序
@@ -48,7 +48,7 @@ REM 64位系统处理分支
 echo+
 echo ***********************************************************************
 echo *                程序自动注入64位的zen浏览器                      *
-echo *注意!!! 新版本会修复omni.ja文件,不要在同一zen版本上重复运行此脚本*
+echo *注意: 新版本会修复omni.ja文件,不要在同一zen版本上重复运行此脚本*
 echo ***********************************************************************
 echo+
 REM 重命名 64 位更新检查程序
@@ -65,7 +65,8 @@ if exist "%~dp0upcheck.exe" setdll%bits% /p:browser\omni.ja 2>nul
 
 REM 检查操作结果并给出相应提示
 if "%errorlevel%"=="0" (
-echo 注入成功,请仔细阅读readme.txt和portable(example).ini文件!
+echo 注入成功,请仔细阅读readme.txt和portable.ini文件
+echo 便携版创建完成！
 ) else (
 echo 程序注入失败,请联系开发者!
 )
@@ -81,7 +82,13 @@ REM 根据系统位数删除不匹配的 DLL 和更新程序
 if "%bits%"=="32" del /s/q portable64.dll upcheck64.exe 2>nul 1>nul
 if "%bits%"=="64" del /s/q portable32.dll upcheck32.exe 2>nul 1>nul
 
-if not exist %~dp0portable.ini copy /y %~dp0portable(example).ini %~dp0portable.ini 2>nul 1>nul
+REM 如果portable.ini不存在，则复制示例配置文件
+if not exist "%~dp0portable.ini" (
+  if exist "%~dp0portable(example).ini" (
+    copy /y "%~dp0portable(example).ini" "%~dp0portable.ini" 2>nul 1>nul
+    echo 已创建portable.ini配置文件
+  )
+)
 
 REM 自动删除此脚本文件（安全考虑）
 @del /q %0 2>nul 1>nul
