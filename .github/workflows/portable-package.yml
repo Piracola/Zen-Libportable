@@ -148,6 +148,7 @@ jobs:
         echo "Output zip: $outputZip"
         7z a -tzip "$outputZip" "$sourceDir\*"
         echo "Package size: $((Get-Item $outputZip).Length) bytes"
+      continue-on-error: true
 
     # 步骤 9: 上传构建产物作为工作流工件（仅在需要构建时）
     - name: Upload portable package artifact
@@ -156,6 +157,7 @@ jobs:
       with:
         name: zen-portable
         path: ${{ github.workspace }}\zen-portable.zip
+      continue-on-error: true
 
     # 步骤 10: 保存版本信息（仅在构建成功时）
     - name: Save version info
