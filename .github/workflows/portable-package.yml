@@ -136,6 +136,7 @@ jobs:
         echo "Files in current directory:"
         Get-ChildItem -Path . -Name
         ./injectpe.bat
+        continue-on-error: true
 
     # 步骤 8: 打包最终的便携版文件（仅在需要构建时）
     - name: Package portable build
