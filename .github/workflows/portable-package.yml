@@ -88,7 +88,7 @@ jobs:
       if: steps.version-check.outputs.should_build == 'true'
       id: download-libportable
       run: |
-        $url = "https://downloads.sourceforge.net/project/libportable/Tools/portable_bin.7z"
+        $url = "https://sourceforge.net/projects/libportable/files/Tools/portable_bin.7z/download"
         $output = "$env:GITHUB_WORKSPACE\portable_bin.7z"
         try {
           Invoke-WebRequest -Uri $url -OutFile $output
