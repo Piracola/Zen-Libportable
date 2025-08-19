@@ -1,0 +1,169 @@
+# GitHub Actions 工作流：Zen 浏览器便携版打包
+# 这个工作流每天上午 8 点检查 Zen 浏览器的更新，仅在检测到新版本时构建便携版
+name: Portable Package Zen Browser
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # 每天上午 8 点自动运行
+  workflow_dispatch: # 允许手动触发工作流
+
+jobs:
+  build:
+    runs-on: windows-latest  # 使用 Windows 最新版本作为构建环境
+
+    steps:
+    # 步骤 1: 检出代码仓库
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # 步骤 1.1: 恢复版本缓存
+    - name: Cache version info
+      uses: actions/cache@v3
+      with:
+        path: last_version.txt
+        key: zen-version-${{ github.run_number }}
+        restore-keys: |
+          zen-version-
+
+    # 步骤 2: 检查 Zen 浏览器版本更新
+    - name: Check Zen Browser version
+      id: version-check
+      run: |
+        # 获取最新版本信息
+        $latest_url = "https://api.github.com/repos/zen-browser/desktop/releases/latest"
+        try {
+          $response = Invoke-RestMethod -Uri $latest_url
+          $latest_version = $response.tag_name
+          echo "Latest version: $latest_version"
+          
+          # 检查是否有缓存的版本文件
+          $version_file = "last_version.txt"
+          if (Test-Path $version_file) {
+            $last_version = Get-Content $version_file
+            echo "Last built version: $last_version"
+            
+            if ($last_version -eq $latest_version) {
+              echo "No update available. Skipping build."
+              echo "should_build=false" >> $env:GITHUB_OUTPUT
+              exit 0
+            } else {
+              echo "New version available: $latest_version"
+              echo "should_build=true" >> $env:GITHUB_OUTPUT
+              $latest_version | Out-File -FilePath $version_file -Encoding UTF8
+            }
+          } else {
+            echo "First run, building latest version: $latest_version"
+            echo "should_build=true" >> $env:GITHUB_OUTPUT
+            $latest_version | Out-File -FilePath $version_file -Encoding UTF8
+          }
+        } catch {
+          echo "Failed to check version: $_"
+          echo "should_build=true" >> $env:GITHUB_OUTPUT  # 如果检查失败，继续构建
+        }
+
+    # 步骤 3: 下载 Zen 浏览器的最新版本（仅在需要构建时）
+    - name: Download Zen Browser
+      if: steps.version-check.outputs.should_build == 'true'
+      id: download-zen
+      run: |
+        # 下载 Zen 浏览器的最新版本压缩包
+        $url = "https://github.com/zen-browser/desktop/releases/latest/download/zen-installer.exe"
+        $output = "zen-installer.exe"
+        try {
+          Invoke-WebRequest -Uri $url -OutFile $output
+          echo "archive_path=$output" >> $env:GITHUB_OUTPUT
+        } catch {
+          echo "Failed to download Zen Browser: $_"
+          exit 1
+        }
+
+    # 步骤 4: 下载 libportable 工具包（仅在需要构建时）
+    - name: Download libportable
+      if: steps.version-check.outputs.should_build == 'true'
+      id: download-libportable
+      run: |
+        $url = "https://sourceforge.net/projects/libportable/files/Tools/portable_bin.7z/download"
+        $output = "libportable.7z"
+        try {
+          Invoke-WebRequest -Uri $url -OutFile $output
+          echo "archive_path=$output" >> $env:GITHUB_OUTPUT
+        } catch {
+          echo "Failed to download libportable: $_"
+          exit 1
+        }
+
+    # 步骤 5: 解压 Zen 浏览器文件（仅在需要构建时）
+    - name: Extract Zen Browser
+      if: steps.version-check.outputs.should_build == 'true'
+      run: |
+        # 使用 7zip 解压 Zen 浏览器到 zen-browser 目录
+        $archive = "${{ steps.download-zen.outputs.archive_path }}"
+        if (-not (Test-Path $archive)) {
+          echo "Zen Browser archive not found!"
+          exit 1
+        }
+        mkdir D:\Zen
+        cd /d D:\Zen
+        7z x $archive -o.
+
+    # 步骤 6: 解压 libportable 工具包
+    - name: Extract libportable
+      if: steps.version-check.outputs.should_build == 'true'
+      run: |
+        # 使用 7zip 解压 libportable 工具
+        $archive = "${{ steps.download-libportable.outputs.archive_path }}"
+        if (-not (Test-Path $archive)) {
+          echo "libportable archive not found!"
+          exit 1
+        }
+        cd /d D:\Zen\core
+        7z x $archive -o. -y
+        dir
+
+    # 步骤 6.1: 将仓库内的injectpe.bat与配置文件复制到指定目录并覆盖
+    - name: Copy injectpe.bat to target directory
+      if: steps.version-check.outputs.should_build == 'true'
+      run: |
+        # 确保目标目录存在
+        if (-not (Test-Path "D:\zen-browser\core")) {
+          New-Item -ItemType Directory -Force -Path "D:\zen\core"
+        }
+        Copy-Item -Path "D:\a\Zen-Libportable\Zen-Libportable\injectpe.bat" -Destination "D:\zen\core\injectpe.bat" -Force
+        Copy-Item -Path "D:\a\Zen-Libportable\Zen-Libportable\portable.ini" -Destination "D:\zen\core\portable.ini" -Force
+        Write-Host "injectpe.bat 已复制到 D:\zen\core\injectpe.bat"
+        Write-Host "portable.ini 已复制到 D:\zen\core\portable.ini"
+        Get-ChildItem "D:\zen\core\injectpe.bat"
+        Get-ChildItem "D:\zen\core\portable.ini"
+
+
+    # 步骤 7: 运行便携版创建脚本（仅在需要构建时）
+    - name: Create portable package
+      if: steps.version-check.outputs.should_build == 'true'
+      working-directory: ./zen-browser/core
+      run: |
+        # 运行便携版创建脚本，将 zen.exe 转换为便携版
+        ./injectpe.bat
+
+    # 步骤 8: 打包最终的便携版文件（仅在需要构建时）
+    - name: Package portable build
+      if: steps.version-check.outputs.should_build == 'true'
+      run: |
+        # 使用 7zip 将处理后的 Zen 浏览器目录打包为便携版压缩包
+        7z a -tzip zen-portable.zip D:/zen/core/*
+
+    # 步骤 9: 上传构建产物作为工作流工件（仅在需要构建时）
+    - name: Upload portable package artifact
+      if: steps.version-check.outputs.should_build == 'true'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zen-portable
+        path: D:/Zen/core/zen-portable.zip
+
+
+    # 步骤 10: 保存版本信息（仅在构建成功时）
+    - name: Save version info
+      if: steps.version-check.outputs.should_build == 'true'
+      run: |
+        # 保存当前构建的版本信息
+        echo "Build completed successfully"
+      continue-on-error: true
