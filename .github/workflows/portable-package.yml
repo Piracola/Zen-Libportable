@@ -88,7 +88,7 @@ jobs:
       if: steps.version-check.outputs.should_build == 'true'
       id: download-libportable
       run: |
-        $url = "https://sourceforge.net/projects/libportable/files/Tools/portable_bin.7z/download"
+        $url = "https://downloads.sourceforge.net/project/libportable/Tools/portable_bin.7z"
         $output = "$env:GITHUB_WORKSPACE\portable_bin.7z"
         try {
           Invoke-WebRequest -Uri $url -OutFile $output
@@ -136,7 +136,6 @@ jobs:
         Set-Location -Path "D:\Zen\core"
         7z x "$archive" -y
         echo "libportable extraction completed"
-        Get-ChildItem -Path . -Name
 
     # 步骤 6.1: 将仓库内的injectpe.bat与配置文件复制到指定目录并覆盖
     - name: Copy injectpe.bat to target directory
