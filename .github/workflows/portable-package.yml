@@ -106,8 +106,8 @@ jobs:
           echo "Zen Browser archive not found!"
           exit 1
         }
-        mkdir D:\Zen
-        cd /d D:\Zen
+        New-Item -ItemType Directory -Force -Path "D:\Zen"
+        Set-Location -Path "D:\Zen"
         7z x $archive -o.
 
     # 步骤 6: 解压 libportable 工具包
