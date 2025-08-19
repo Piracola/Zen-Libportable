@@ -6,6 +6,10 @@ on:
   schedule:
     - cron: '0 8 * * *' # 每天上午 8 点自动运行
   workflow_dispatch: # 允许手动触发工作流
+  push: # 每次推送代码后触发构建
+    branches:
+      - main
+      - master
 
 jobs:
   build:
