@@ -108,7 +108,7 @@ jobs:
         }
         New-Item -ItemType Directory -Force -Path "D:\Zen"
         Set-Location -Path "D:\Zen"
-        7z x $archive -o.
+        7z x "$archive" -y
 
     # 步骤 6: 解压 libportable 工具包
     - name: Extract libportable
@@ -120,8 +120,8 @@ jobs:
           echo "libportable archive not found!"
           exit 1
         }
-        cd /d D:\Zen\core
-        7z x $archive -o. -y
+        Set-Location -Path "D:\Zen\core"
+        7z x "$archive" -y
         dir
 
     # 步骤 6.1: 将仓库内的injectpe.bat与配置文件复制到指定目录并覆盖
@@ -138,7 +138,6 @@ jobs:
         Write-Host "portable.ini 已复制到 D:\zen\core\portable.ini"
         Get-ChildItem "D:\zen\core\injectpe.bat"
         Get-ChildItem "D:\zen\core\portable.ini"
-
 
     # 步骤 7: 运行便携版创建脚本（仅在需要构建时）
     - name: Create portable package
@@ -162,7 +161,6 @@ jobs:
       with:
         name: zen-portable
         path: D:/Zen/core/zen-portable.zip
-
 
     # 步骤 10: 保存版本信息（仅在构建成功时）
     - name: Save version info
