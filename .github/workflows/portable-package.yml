@@ -83,23 +83,7 @@ jobs:
           exit 1
         }
 
-    # 步骤 4: 下载 libportable 工具包（仅在需要构建时）
-    - name: Download libportable
-      if: steps.version-check.outputs.should_build == 'true'
-      id: download-libportable
-      run: |
-        $url = "https://cyfuture.dl.sourceforge.net/project/libportable/Tools/portable_bin.7z"
-        $output = "$env:GITHUB_WORKSPACE\portable_bin.7z"
-        try {
-          Invoke-WebRequest -Uri $url -OutFile $output
-          echo "archive_path=$output" >> $env:GITHUB_OUTPUT
-          echo "Downloaded libportable size: $((Get-Item $output).Length) bytes"
-        } catch {
-          echo "Failed to download libportable: $_"
-          exit 1
-        }
-
-    # 步骤 5: 解压 Zen 浏览器文件（仅在需要构建时）
+    # 步骤 4: 解压 Zen 浏览器文件（仅在需要构建时）
     - name: Extract Zen Browser
       if: steps.version-check.outputs.should_build == 'true'
       run: |
@@ -114,31 +98,15 @@ jobs:
           exit 1
         }
         echo "Archive found, size: $((Get-Item $archive).Length) bytes"
-        New-Item -ItemType Directory -Force -Path "D:\Zen"
-        Set-Location -Path "D:\Zen"
+        New-Item -ItemType Directory -Force -Path "D:\zen"
+        Set-Location -Path "D:\zen"
         echo "Extracting to: $(Get-Location)"
         7z x "$archive" -y
         echo "Extraction completed"
         Get-ChildItem -Path . -Name
 
-    # 步骤 6: 解压 libportable 工具包
-    - name: Extract libportable
-      if: steps.version-check.outputs.should_build == 'true'
-      run: |
-        # 使用 7zip 解压 libportable 工具
-        $archive = "${{ steps.download-libportable.outputs.archive_path }}"
-        echo "Looking for libportable archive at: $archive"
-        if (-not (Test-Path $archive)) {
-          echo "libportable archive not found at: $archive"
-          exit 1
-        }
-        echo "libportable archive found, size: $((Get-Item $archive).Length) bytes"
-        Set-Location -Path "D:\Zen\core"
-        7z x "$archive" -y
-        echo "libportable extraction completed"
-
-    # 步骤 6.1: 将仓库内的injectpe.bat与配置文件复制到指定目录并覆盖
-    - name: Copy injectpe.bat to target directory
+    # 步骤 5: 复制本地 libportable 工具包到目标目录
+    - name: Copy local libportable tools
       if: steps.version-check.outputs.should_build == 'true'
       run: |
         # 确保目标目录存在
@@ -146,15 +114,16 @@ jobs:
         if (-not (Test-Path $targetDir)) {
           New-Item -ItemType Directory -Force -Path $targetDir
         }
-        echo "Target directory: $targetDir"
-        echo "Files in target directory before copy:"
-        if (Test-Path $targetDir) { Get-ChildItem -Path $targetDir -Name }
         
-        Copy-Item -Path "$env:GITHUB_WORKSPACE\injectpe.bat" -Destination "$targetDir\injectpe.bat" -Force
-        Copy-Item -Path "$env:GITHUB_WORKSPACE\portable.ini" -Destination "$targetDir\portable.ini" -Force
+        # 复制本地 libportable 文件
+        $libportableSource = "$env:GITHUB_WORKSPACE\libportable"
+        echo "Copying libportable from: $libportableSource"
+        echo "Files in libportable directory:"
+        Get-ChildItem -Path $libportableSource -Name
         
-        echo "Files copied successfully"
-        echo "Files in target directory after copy:"
+        Copy-Item -Path "$libportableSource\*" -Destination $targetDir -Recurse -Force
+        echo "libportable tools copied successfully"
+        echo "Files in target directory:"
         Get-ChildItem -Path $targetDir -Name
 
     # 步骤 7: 运行便携版创建脚本（仅在需要构建时）
