@@ -90,14 +90,7 @@ jobs:
       run: |
         $url = "https://sourceforge.net/projects/libportable/files/Tools/portable_bin.7z/download"
         $output = "$env:GITHUB_WORKSPACE\portable_bin.7z"
-        try {
-          Invoke-WebRequest -Uri $url -OutFile $output
-          echo "archive_path=$output" >> $env:GITHUB_OUTPUT
-          echo "Downloaded libportable size: $((Get-Item $output).Length) bytes"
-        } catch {
-          echo "Failed to download libportable: $_"
-          exit 1
-        }
+        Invoke-WebRequest -Uri $url -OutFile $output
 
     # 步骤 5: 解压 Zen 浏览器文件（仅在需要构建时）
     - name: Extract Zen Browser
@@ -126,7 +119,7 @@ jobs:
       if: steps.version-check.outputs.should_build == 'true'
       run: |
         # 使用 7zip 解压 libportable 工具
-        $archive = "${{ steps.download-libportable.outputs.archive_path }}"
+        $archive = "$env:GITHUB_WORKSPACE\portable_bin.7z"
         echo "Looking for libportable archive at: $archive"
         if (-not (Test-Path $archive)) {
           echo "libportable archive not found at: $archive"
