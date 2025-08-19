@@ -72,10 +72,12 @@ jobs:
       run: |
         # 下载 Zen 浏览器的最新版本压缩包
         $url = "https://github.com/zen-browser/desktop/releases/latest/download/zen.installer.exe"
-        $output = "zen.installer.exe"
+        $output = "$env:GITHUB_WORKSPACE\zen-installer.exe"
         try {
           Invoke-WebRequest -Uri $url -OutFile $output
           echo "archive_path=$output" >> $env:GITHUB_OUTPUT
+          echo "Downloaded file size: $((Get-Item $output).Length) bytes"
+          echo "Downloaded file location: $output"
         } catch {
           echo "Failed to download Zen Browser: $_"
           exit 1
@@ -87,10 +89,11 @@ jobs:
       id: download-libportable
       run: |
         $url = "https://sourceforge.net/projects/libportable/files/Tools/portable_bin.7z/download"
-        $output = "libportable.7z"
+        $output = "$env:GITHUB_WORKSPACE\libportable.7z"
         try {
           Invoke-WebRequest -Uri $url -OutFile $output
           echo "archive_path=$output" >> $env:GITHUB_OUTPUT
+          echo "Downloaded libportable size: $((Get-Item $output).Length) bytes"
         } catch {
           echo "Failed to download libportable: $_"
           exit 1
@@ -102,13 +105,21 @@ jobs:
       run: |
         # 使用 7zip 解压 Zen 浏览器到 zen-browser 目录
         $archive = "${{ steps.download-zen.outputs.archive_path }}"
+        echo "Looking for archive at: $archive"
         if (-not (Test-Path $archive)) {
-          echo "Zen Browser archive not found!"
+          echo "Zen Browser archive not found at: $archive"
+          echo "Current directory: $(Get-Location)"
+          echo "Files in current directory:"
+          Get-ChildItem -Path . -Name
           exit 1
         }
+        echo "Archive found, size: $((Get-Item $archive).Length) bytes"
         New-Item -ItemType Directory -Force -Path "D:\Zen"
         Set-Location -Path "D:\Zen"
+        echo "Extracting to: $(Get-Location)"
         7z x "$archive" -y
+        echo "Extraction completed"
+        Get-ChildItem -Path . -Name
 
     # 步骤 6: 解压 libportable 工具包
     - name: Extract libportable
@@ -116,35 +127,46 @@ jobs:
       run: |
         # 使用 7zip 解压 libportable 工具
         $archive = "${{ steps.download-libportable.outputs.archive_path }}"
+        echo "Looking for libportable archive at: $archive"
         if (-not (Test-Path $archive)) {
-          echo "libportable archive not found!"
+          echo "libportable archive not found at: $archive"
           exit 1
         }
+        echo "libportable archive found, size: $((Get-Item $archive).Length) bytes"
         Set-Location -Path "D:\Zen\core"
         7z x "$archive" -y
-        dir
+        echo "libportable extraction completed"
+        Get-ChildItem -Path . -Name
 
     # 步骤 6.1: 将仓库内的injectpe.bat与配置文件复制到指定目录并覆盖
     - name: Copy injectpe.bat to target directory
       if: steps.version-check.outputs.should_build == 'true'
       run: |
         # 确保目标目录存在
-        if (-not (Test-Path "D:\zen-browser\core")) {
-          New-Item -ItemType Directory -Force -Path "D:\zen\core"
+        $targetDir = "D:\zen\core"
+        if (-not (Test-Path $targetDir)) {
+          New-Item -ItemType Directory -Force -Path $targetDir
         }
-        Copy-Item -Path "D:\a\Zen-Libportable\Zen-Libportable\injectpe.bat" -Destination "D:\zen\core\injectpe.bat" -Force
-        Copy-Item -Path "D:\a\Zen-Libportable\Zen-Libportable\portable.ini" -Destination "D:\zen\core\portable.ini" -Force
-        Write-Host "injectpe.bat 已复制到 D:\zen\core\injectpe.bat"
-        Write-Host "portable.ini 已复制到 D:\zen\core\portable.ini"
-        Get-ChildItem "D:\zen\core\injectpe.bat"
-        Get-ChildItem "D:\zen\core\portable.ini"
+        echo "Target directory: $targetDir"
+        echo "Files in target directory before copy:"
+        if (Test-Path $targetDir) { Get-ChildItem -Path $targetDir -Name }
+        
+        Copy-Item -Path "$env:GITHUB_WORKSPACE\injectpe.bat" -Destination "$targetDir\injectpe.bat" -Force
+        Copy-Item -Path "$env:GITHUB_WORKSPACE\portable.ini" -Destination "$targetDir\portable.ini" -Force
+        
+        echo "Files copied successfully"
+        echo "Files in target directory after copy:"
+        Get-ChildItem -Path $targetDir -Name
 
     # 步骤 7: 运行便携版创建脚本（仅在需要构建时）
     - name: Create portable package
       if: steps.version-check.outputs.should_build == 'true'
-      working-directory: ./zen-browser/core
+      working-directory: D:\zen\core
       run: |
         # 运行便携版创建脚本，将 zen.exe 转换为便携版
+        echo "Current directory: $(Get-Location)"
+        echo "Files in current directory:"
+        Get-ChildItem -Path . -Name
         ./injectpe.bat
 
     # 步骤 8: 打包最终的便携版文件（仅在需要构建时）
@@ -152,7 +174,12 @@ jobs:
       if: steps.version-check.outputs.should_build == 'true'
       run: |
         # 使用 7zip 将处理后的 Zen 浏览器目录打包为便携版压缩包
-        7z a -tzip zen-portable.zip D:/zen/core/*
+        $sourceDir = "D:\zen\core"
+        $outputZip = "$env:GITHUB_WORKSPACE\zen-portable.zip"
+        echo "Packaging from: $sourceDir"
+        echo "Output zip: $outputZip"
+        7z a -tzip "$outputZip" "$sourceDir\*"
+        echo "Package size: $((Get-Item $outputZip).Length) bytes"
 
     # 步骤 9: 上传构建产物作为工作流工件（仅在需要构建时）
     - name: Upload portable package artifact
@@ -160,7 +187,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: zen-portable
-        path: D:/Zen/core/zen-portable.zip
+        path: ${{ github.workspace }}\zen-portable.zip
 
     # 步骤 10: 保存版本信息（仅在构建成功时）
     - name: Save version info
