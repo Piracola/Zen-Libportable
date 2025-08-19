@@ -14,11 +14,11 @@ jobs:
     steps:
     # 步骤 1: 检出代码仓库
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     # 步骤 1.1: 恢复版本缓存
     - name: Cache version info
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: last_version.txt
         key: zen-version-${{ github.run_number }}
@@ -154,7 +154,7 @@ jobs:
     # 步骤 9: 上传构建产物作为工作流工件（仅在需要构建时）
     - name: Upload portable package artifact
       if: steps.version-check.outputs.should_build == 'true'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: zen-portable
         path: D:/Zen/core/zen-portable.zip
