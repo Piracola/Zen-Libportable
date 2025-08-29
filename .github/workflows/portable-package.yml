@@ -39,6 +39,7 @@ jobs:
           $response = Invoke-RestMethod -Uri $latest_url
           $latest_version = $response.tag_name
           echo "Latest version: $latest_version"
+          echo "zen_version=$latest_version" >> $env:GITHUB_OUTPUT
           
           # 检查是否有缓存的版本文件
           $version_file = "last_version.txt"
@@ -166,4 +167,40 @@ jobs:
       run: |
         # 保存当前构建的版本信息
         echo "Build completed successfully"
+      continue-on-error: true
+
+    # 步骤 11: 创建或更新 GitHub Release（仅在构建成功时）
+    - name: Create or Update GitHub Release
+      if: steps.version-check.outputs.should_build == 'true'
+      id: create-release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version-check.outputs.zen_version }}
+        release_name: Zen Browser Portable ${{ steps.version-check.outputs.zen_version }}
+        body: |
+          Zen Browser ${{ steps.version-check.outputs.zen_version }} 便携版
+          
+          这是一个自动构建的 Zen 浏览器便携版本，基于 libportable 项目。
+          
+          ## 版本信息
+          - 基础版本：${{ steps.version-check.outputs.zen_version }}
+          - 构建时间：${{ github.run_started_at }}
+          - 构建环境：${{ runner.os }}
+        draft: false
+        prerelease: false
+      continue-on-error: true
+
+    # 步骤 12: 上传便携版文件到 GitHub Release（仅在构建成功时）
+    - name: Upload Portable Package to Release
+      if: steps.version-check.outputs.should_build == 'true'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}\zen-portable.zip
+        asset_name: zen-browser-${{ steps.version-check.outputs.zen_version }}-portable.zip
+        asset_content_type: application/zip
       continue-on-error: true
