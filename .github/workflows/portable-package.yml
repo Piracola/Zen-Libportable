@@ -3,17 +3,23 @@
 name: Portable Package Zen Browser
 
 on:
-  schedule:
-    - cron: '0 8 * * *' # 每天上午 8 点自动运行
-  workflow_dispatch: # 允许手动触发工作流
-  push: # 每次推送代码后触发构建
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: '构建原因'
+        required: false
+        default: '手动触发构建'
+        type: string
+  push:
     branches:
       - main
       - master
+  schedule:
+    - cron: '0 0 * * *'
 
 jobs:
   build:
-    runs-on: windows-latest  # 使用 Windows 最新版本作为构建环境
+    runs-on: windows-latest
 
     steps:
     # 步骤 1: 检出代码仓库
@@ -33,6 +39,10 @@ jobs:
     - name: Check Zen Browser version
       id: version-check
       run: |
+        # 检查触发事件类型
+        $trigger_event = "${{ github.event_name }}"
+        echo "Trigger event: $trigger_event"
+        
         # 获取最新版本信息
         $latest_url = "https://api.github.com/repos/zen-browser/desktop/releases/latest"
         try {
@@ -41,34 +51,47 @@ jobs:
           echo "Latest version: $latest_version"
           echo "zen_version=$latest_version" >> $env:GITHUB_OUTPUT
           
-          # 检查是否有缓存的版本文件
-          $version_file = "last_version.txt"
-          if (Test-Path $version_file) {
-            $last_version = Get-Content $version_file
-            echo "Last built version: $last_version"
-            
-            if ($last_version -eq $latest_version) {
-              echo "No update available. Skipping build."
-              echo "should_build=false" >> $env:GITHUB_OUTPUT
-              exit 0
+          # 检查触发类型：手动触发和代码提交触发总是执行构建
+          if ($trigger_event -eq "workflow_dispatch" -or $trigger_event -eq "push") {
+            echo "Manual or push trigger detected. Forcing build."
+            echo "should_build=true" >> $env:GITHUB_OUTPUT
+            echo "build_reason=$trigger_event" >> $env:GITHUB_OUTPUT
+            # 更新版本缓存
+            $latest_version | Out-File -FilePath "last_version.txt" -Encoding UTF8
+          } else {
+            # 定时触发：检查版本更新
+            echo "Schedule trigger detected. Checking for updates."
+            $version_file = "last_version.txt"
+            if (Test-Path $version_file) {
+              $last_version = Get-Content $version_file
+              echo "Last built version: $last_version"
+              
+              if ($last_version -eq $latest_version) {
+                echo "No update available. Skipping build."
+                echo "should_build=false" >> $env:GITHUB_OUTPUT
+                echo "build_reason=no_update" >> $env:GITHUB_OUTPUT
+                exit 0
+              } else {
+                echo "New version available: $latest_version"
+                echo "should_build=true" >> $env:GITHUB_OUTPUT
+                echo "build_reason=version_update" >> $env:GITHUB_OUTPUT
+                $latest_version | Out-File -FilePath $version_file -Encoding UTF8
+              }
             } else {
-              echo "New version available: $latest_version"
+              echo "First run, building latest version: $latest_version"
               echo "should_build=true" >> $env:GITHUB_OUTPUT
+              echo "build_reason=first_run" >> $env:GITHUB_OUTPUT
               $latest_version | Out-File -FilePath $version_file -Encoding UTF8
             }
-          } else {
-            echo "First run, building latest version: $latest_version"
-            echo "should_build=true" >> $env:GITHUB_OUTPUT
-            $latest_version | Out-File -FilePath $version_file -Encoding UTF8
           }
         } catch {
           echo "Failed to check version: $_"
           echo "should_build=true" >> $env:GITHUB_OUTPUT  # 如果检查失败，继续构建
+          echo "build_reason=error_fallback" >> $env:GITHUB_OUTPUT
         }
 
-    # 步骤 3: 下载 Zen 浏览器的最新版本（仅在需要构建时）
+    # 步骤 3: 下载 Zen 浏览器的最新版本
     - name: Download Zen Browser
-      if: steps.version-check.outputs.should_build == 'true'
       id: download-zen
       run: |
         # 下载 Zen 浏览器的最新版本压缩包
@@ -84,9 +107,8 @@ jobs:
           exit 1
         }
 
-    # 步骤 4: 解压 Zen 浏览器文件（仅在需要构建时）
+    # 步骤 4: 解压 Zen 浏览器文件
     - name: Extract Zen Browser
-      if: steps.version-check.outputs.should_build == 'true'
       run: |
         # 使用 7zip 解压 Zen 浏览器到 zen-browser 目录
         $archive = "${{ steps.download-zen.outputs.archive_path }}"
@@ -108,7 +130,6 @@ jobs:
 
     # 步骤 5: 复制本地 libportable 工具包到目标目录
     - name: Copy local libportable tools
-      if: steps.version-check.outputs.should_build == 'true'
       run: |
         # 确保目标目录存在
         $targetDir = "D:\zen\core"
@@ -127,9 +148,8 @@ jobs:
         echo "Files in target directory:"
         Get-ChildItem -Path $targetDir -Name
 
-    # 步骤 7: 运行便携版创建脚本（仅在需要构建时）
+    # 步骤 7: 运行便携版创建脚本
     - name: Create portable package
-      if: steps.version-check.outputs.should_build == 'true'
       working-directory: D:\zen\core
       run: |
         # 运行便携版创建脚本，将 zen.exe 转换为便携版
@@ -139,9 +159,8 @@ jobs:
         ./injectpe.bat
       continue-on-error: true
 
-    # 步骤 8: 打包最终的便携版文件（仅在需要构建时）
+    # 步骤 8: 打包最终的便携版文件
     - name: Package portable build
-      if: steps.version-check.outputs.should_build == 'true'
       run: |
         # 使用 7zip 将处理后的 Zen 浏览器目录打包为便携版压缩包
         $sourceDir = "D:\zen\core"
@@ -152,26 +171,28 @@ jobs:
         echo "Package size: $((Get-Item $outputZip).Length) bytes"
       continue-on-error: true
 
-    # 步骤 9: 上传构建产物作为工作流工件（仅在需要构建时）
+    # 步骤 9: 上传构建产物作为工作流工件
     - name: Upload portable package artifact
-      if: steps.version-check.outputs.should_build == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: zen-portable
         path: ${{ github.workspace }}\zen-portable.zip
       continue-on-error: true
 
-    # 步骤 10: 保存版本信息（仅在构建成功时）
+    # 步骤 10: 保存版本信息
     - name: Save version info
-      if: steps.version-check.outputs.should_build == 'true'
       run: |
         # 保存当前构建的版本信息
-        echo "Build completed successfully"
+        echo "Build marked as successful regardless of packaging result"
+        echo "Zen Browser version: ${{ steps.version-check.outputs.zen_version }}"
+        echo "Build trigger: ${{ steps.version-check.outputs.build_reason }}"
+        echo "Event name: ${{ github.event_name }}"
+        echo "zen_version=${{ steps.version-check.outputs.zen_version }}" >> $env:GITHUB_OUTPUT
+        echo "build_reason=${{ steps.version-check.outputs.build_reason }}" >> $env:GITHUB_OUTPUT
       continue-on-error: true
 
-    # 步骤 11: 创建或更新 GitHub Release（仅在构建成功时）
+    # 步骤 11: 创建或更新 GitHub Release
     - name: Create or Update GitHub Release
-      if: steps.version-check.outputs.should_build == 'true'
       id: create-release
       uses: actions/create-release@v1
       env:
@@ -192,9 +213,8 @@ jobs:
         prerelease: false
       continue-on-error: true
 
-    # 步骤 12: 上传便携版文件到 GitHub Release（仅在构建成功时）
+    # 步骤 12: 上传便携版文件到 GitHub Release
     - name: Upload Portable Package to Release
-      if: steps.version-check.outputs.should_build == 'true'
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
