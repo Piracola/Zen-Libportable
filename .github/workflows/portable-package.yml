@@ -216,6 +216,4 @@ jobs:
         prerelease: false
         files: |
           ${{ github.workspace }}\zen-portable.zip
-        # 如果Release已存在，则更新文件而不是创建新的Release
-        update_existing_files: true
       continue-on-error: true
