@@ -4,12 +4,12 @@
 
 ## 项目简介
 
-本项目使用 **libportable** 工具实现浏览器便携版的自动化打包。通过 GitHub Actions 工作流，自动检测新版本并生成便携版安装包。
+本项目使用 [**libportable**](https://github.com/adonais/libportable) 工具实现浏览器便携版的自动化打包。通过 GitHub Actions 工作流，自动检测新版本并生成便携版安装包。
 
 ## 支持的浏览器
 
 - **Zen 浏览器**：基于 Firefox 的增强浏览器
-- **Firefox 浏览器**：开源网页浏览器
+- [**Firefox 浏览器**](https://github.com/Piracola/Firefox-Libportable)：开源网页浏览器
 
 ## 核心功能
 
