@@ -1,6 +1,6 @@
 # GitHub Actions 工作流：浏览器便携版打包
 # 这个工作流支持 Zen 浏览器和 Firefox 浏览器的便携版构建
-name: Portable Package Browsers
+name: Firefox Portable Build
 
 on:
   workflow_dispatch:
