@@ -162,11 +162,27 @@ jobs:
         ./injectpe.bat
       continue-on-error: true
 
+    # 步骤 7.1: 重命名文件夹为Zen
+    - name: Rename folder to Zen
+      run: |
+        # 将core文件夹重命名为Zen
+        $sourceDir = "D:\zen\core"
+        $targetDir = "D:\zen\Zen"
+        if (Test-Path $sourceDir) {
+          echo "Renaming directory from $sourceDir to $targetDir"
+          Rename-Item -Path $sourceDir -NewName "Zen" -Force
+          echo "Directory renamed successfully"
+        } else {
+          echo "Source directory not found: $sourceDir"
+          exit 1
+        }
+      continue-on-error: true
+
     # 步骤 8: 打包最终的便携版文件
     - name: Package portable build
       run: |
         # 使用 7zip 将处理后的 Zen 浏览器目录打包为便携版压缩包
-        $sourceDir = "D:\zen\core"
+        $sourceDir = "D:\zen\Zen"
         $outputZip = "$env:GITHUB_WORKSPACE\zen-portable.zip"
         echo "Packaging from: $sourceDir"
         echo "Output zip: $outputZip"
@@ -184,14 +200,22 @@ jobs:
 
     # 步骤 10: 保存版本信息
     - name: Save version info
+      id: save-info
       run: |
         # 保存当前构建的版本信息
         echo "Build marked as successful regardless of packaging result"
         echo "Zen Browser version: ${{ steps.version-check.outputs.zen_version }}"
         echo "Build trigger: ${{ steps.version-check.outputs.build_reason }}"
         echo "Event name: ${{ github.event_name }}"
+        
+        # 获取格式化的构建时间
+        $buildTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        echo "Build time: $buildTime"
+        
+        # 输出变量供后续步骤使用
         echo "zen_version=${{ steps.version-check.outputs.zen_version }}" >> $env:GITHUB_OUTPUT
         echo "build_reason=${{ steps.version-check.outputs.build_reason }}" >> $env:GITHUB_OUTPUT
+        echo "build_time=$buildTime" >> $env:GITHUB_OUTPUT
       continue-on-error: true
 
     # 步骤 11: 创建或更新 GitHub Release 并上传便携版文件
@@ -209,9 +233,8 @@ jobs:
           
           ## 版本信息
           - 基础版本：${{ steps.version-check.outputs.zen_version }}
-          - 构建时间：${{ github.run_started_at }}
+          - 构建时间：${{ steps.save-info.outputs.build_time }}
           - 构建环境：${{ runner.os }}
-          - 构建触发：${{ steps.version-check.outputs.build_reason }}
         draft: false
         prerelease: false
         files: |
