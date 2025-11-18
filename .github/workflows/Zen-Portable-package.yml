@@ -138,44 +138,20 @@ jobs:
         files: |
           ${{ github.workspace }}\Zen.zip
 
-    # 清理旧的构建记录
-    - name: Cleanup Old Workflow Runs
-      if: steps.version-check.outputs.should_build == 'true'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const { owner, repo } = context.repo;
-          const workflowId = context.workflow;
-          const keepCount = 10; // 保留最近10次构建记录
-          
-          // 获取工作流运行记录
-          const runs = await github.rest.actions.listWorkflowRuns({
-            owner,
-            repo,
-            workflow_id: workflowId,
-            per_page: 100
-          });
-          
-          // 按创建时间排序（最新的在前）
-          const sortedRuns = runs.data.workflow_runs.sort((a, b) => {
-            return new Date(b.created_at) - new Date(a.created_at);
-          });
-          
-          // 删除超过保留数量的运行记录（保留前keepCount个）
-          let deletedCount = 0;
-          for (let i = keepCount; i < sortedRuns.length; i++) {
-            const run = sortedRuns[i];
-            try {
-              await github.rest.actions.deleteWorkflowRun({
-                owner,
-                repo,
-                run_id: run.id
-              });
-              deletedCount++;
-              console.log(`已删除运行记录: ${run.id} (${run.created_at})`);
-            } catch (error) {
-              console.log(`删除运行记录失败: ${run.id}, 错误: ${error.message}`);
-            }
-          }
-          
-          console.log(`清理完成，共删除 ${deletedCount} 个旧的构建记录，保留最近 ${keepCount} 次`);
+# 清理旧的构建记录
+cleanup:
+    # 建议加上 if: always()，这样即使 build 失败了，也能清理旧记录
+    if: always()
+    needs: build # (可选) 如果你希望 build 跑完再清理，就加上这行
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 10
