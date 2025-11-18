@@ -140,7 +140,7 @@ jobs:
 
   cleanup:
     if: always()
-    needs: build
+    needs: build-zen
     runs-on: ubuntu-latest
     permissions:
       actions: write
