@@ -138,18 +138,18 @@ jobs:
         files: |
           ${{ github.workspace }}\Zen.zip
 
-    cleanup:
-      if: always()
-      needs: build
-      runs-on: ubuntu-latest
-      permissions:
-        actions: write
-        contents: read
-      steps:
-        - name: Delete workflow runs
-          uses: Mattraks/delete-workflow-runs@v2
-          with:
-            token: ${{ github.token }}
-            repository: ${{ github.repository }}
-            retain_days: 0
-            keep_minimum_runs: 10
+  cleanup:
+    if: always()
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 10
