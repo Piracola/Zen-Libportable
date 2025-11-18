@@ -137,3 +137,45 @@ jobs:
         prerelease: false
         files: |
           ${{ github.workspace }}\Zen.zip
+
+    # 清理旧的构建记录
+    - name: Cleanup Old Workflow Runs
+      if: steps.version-check.outputs.should_build == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+          const workflowId = context.workflow;
+          const keepCount = 10; // 保留最近10次构建记录
+          
+          // 获取工作流运行记录
+          const runs = await github.rest.actions.listWorkflowRuns({
+            owner,
+            repo,
+            workflow_id: workflowId,
+            per_page: 100
+          });
+          
+          // 按创建时间排序（最新的在前）
+          const sortedRuns = runs.data.workflow_runs.sort((a, b) => {
+            return new Date(b.created_at) - new Date(a.created_at);
+          });
+          
+          // 删除超过保留数量的运行记录（保留前keepCount个）
+          let deletedCount = 0;
+          for (let i = keepCount; i < sortedRuns.length; i++) {
+            const run = sortedRuns[i];
+            try {
+              await github.rest.actions.deleteWorkflowRun({
+                owner,
+                repo,
+                run_id: run.id
+              });
+              deletedCount++;
+              console.log(`已删除运行记录: ${run.id} (${run.created_at})`);
+            } catch (error) {
+              console.log(`删除运行记录失败: ${run.id}, 错误: ${error.message}`);
+            }
+          }
+          
+          console.log(`清理完成，共删除 ${deletedCount} 个旧的构建记录，保留最近 ${keepCount} 次`);
