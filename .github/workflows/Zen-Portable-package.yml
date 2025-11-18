@@ -102,8 +102,8 @@ jobs:
         if (Test-Path "D:\zen\core") {
           Rename-Item -Path "D:\zen\core" -NewName "Zen" -Force
         }
-        continue-on-error: true
-        
+      continue-on-error: true
+
     # 打包便携版文件
     - name: Package Portable Build
       if: steps.version-check.outputs.should_build == 'true'
