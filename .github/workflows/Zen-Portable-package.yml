@@ -86,9 +86,19 @@ jobs:
         
         # 运行便携版创建脚本
         Set-Location -Path $targetDir
-        ./injectpe.bat
+        $injectScript = "$targetDir\injectpe.bat"
+        if (Test-Path $injectScript) {
+          cmd /c $injectScript
+        } else {
+          Write-Error "批处理文件未找到: $injectScript"
+          exit 1
+        }
+        
+        # 等待一下确保文件操作完成
+        Start-Sleep -Seconds 2
         
         # 重命名文件夹
+        Set-Location -Path "D:\zen"
         if (Test-Path "D:\zen\core") {
           Rename-Item -Path "D:\zen\core" -NewName "Zen" -Force
         }
