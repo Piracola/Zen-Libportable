@@ -71,6 +71,12 @@ jobs:
         New-Item -ItemType Directory -Force -Path "D:\zen"
         Set-Location -Path "D:\zen"
         7z x "$output" -y
+        
+        # 删除根目录下的setup.exe文件
+        if (Test-Path "D:\setup.exe") {
+          Remove-Item -Path "D:\setup.exe" -Force
+          Write-Host "已删除setup.exe文件"
+        }
 
     # 复制 libportable 工具并创建便携版
     - name: Create Portable Package
@@ -110,7 +116,7 @@ jobs:
       run: |
         # 打包为便携版压缩包
         $outputZip = "$env:GITHUB_WORKSPACE\Zen.zip"
-        7z a -tzip "$outputZip" "D:\zen"
+        7z a -tzip "$outputZip" "D:\zen\*"
 
     # 创建 GitHub Release 并上传文件
     - name: Create Release and Upload Package
@@ -126,13 +132,9 @@ jobs:
           这是一个自动构建的 Zen 浏览器便携版本，基于 libportable 项目。
 
           使用方法：
-          1. 下载 [Zen.zip](https://github.com/JBCode-WebProject/Zen-Libportable/releases/latest/download/Zen.zip) 文件
+          1. 下载 [Zen.zip](https://github.com/Piracola/Zen-Libportable/releases/latest/download/Zen.zip) 文件
           2. 解压到任意目录
           3. 运行 开始.bat 即可创建快捷方式
-          
-          ### 版本信息
-          - 构建时间：${{ github.run_number }}
-          - 构建环境：${{ runner.os }}
         draft: false
         prerelease: false
         files: |
