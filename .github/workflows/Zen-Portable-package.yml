@@ -74,7 +74,7 @@ jobs:
         
         # 删除根目录下的setup.exe文件
         if (Test-Path "D:\zen\setup.exe") {
-          Remove-Item -Path "D:\setup.exe" -Force
+          Remove-Item -Path "D:\zen\setup.exe" -Force
           Write-Host "已删除setup.exe文件"
         }
 
