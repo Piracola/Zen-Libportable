@@ -1,9 +1,9 @@
 @echo off
 if exist "%~dp0zen.exe" (echo.) && if exist "%~dp0mozglue.dll" (
-echo ���ҵ���Ҫע����ļ�zen.exe. 
+echo 已找到需要注入的文件zen.exe. 
 goto platform
 ) else (
-echo û�ҵ�����ļ�,��ѳ������������İ�װĿ¼ִ��.
+echo 没找到相关文件,请把程序放入浏览器的安装目录执行.
 goto eof
 )
 
@@ -20,7 +20,7 @@ goto eof
 
 :x86
 @echo ***********************************************************************
-@echo *                �����Զ�ע��32λ��zen�����                      *
+@echo *                程序自动注入32位的Zen浏览器                      *
 @echo ***********************************************************************
 echo+
 @pause .
@@ -30,7 +30,7 @@ goto runing
 :x64
 echo+
 @echo ***********************************************************************
-@echo *                �����Զ�ע��64λ��zen�����                      *
+@echo *                程序自动注入64位的Zen浏览器                      *
 @echo ***********************************************************************
 echo+
 @pause .
@@ -38,8 +38,8 @@ if exist "%~dp0upcheck64.exe" rename upcheck64.exe upcheck.exe 2>nul
 
 :runing
 if exist "%~dp0upcheck.exe" upcheck.exe -dll 2>nul
-if "%errorlevel%"=="0" echo ע��ɹ�,����ϸ�Ķ�README��portable(example).ini�ļ�!&goto eof
-echo ����ע��ʧ��, ��ο�������Ϣ, ������֮ǰע���.
+if "%errorlevel%"=="0" echo 注入成功,请仔细阅读README和portable(example).ini文件!&goto eof
+echo 程序注入失败, 请参考错误信息, 或许你之前注入过.
 
 :eof
 pause .
