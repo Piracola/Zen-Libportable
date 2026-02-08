@@ -1,37 +1,20 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
-:: 设置目标文件路径
-set "targetDir=Zen"
-set "targetExe=zen.exe"
-set "targetPath=%~dp0%targetDir%\%targetExe%"
+set "target=%~dp0Zen\zen.exe"
+set "lnk=%~dp0Zen.lnk"
 
-:: 检查目标文件是否存在
-if not exist "%targetPath%" (
-    echo 错误: 未找到 %targetPath%
-    pause
-    exit /b 1
+if not exist "%target%" (
+    echo [错误] 未找到 %target%
+    pause & exit /b 1
 )
 
-:: 设置快捷方式名称和路径
-set "shortcutName=Zen.lnk"
-set "shortcutPath=%~dp0%shortcutName%"
+powershell -NoP -EP Bypass -C "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut('%lnk%');$s.TargetPath='%target%';$s.WorkingDirectory='%~dp0Zen';$s.Description='Zen浏览器';$s.Save()" 2>nul
 
-:: 创建VBS脚本来生成快捷方式
-set "vbsScript=%temp%\CreateShortcut.vbs"
+if %errorlevel% neq 0 (
+    echo [错误] 创建快捷方式失败
+    pause & exit /b 1
+)
 
-echo Set oWS = WScript.CreateObject("WScript.Shell") > "%vbsScript%"
-echo sLinkFile = "%shortcutPath%" >> "%vbsScript%"
-echo Set oLink = oWS.CreateShortcut(sLinkFile) >> "%vbsScript%"
-echo oLink.TargetPath = "%targetPath%" >> "%vbsScript%"
-echo oLink.WorkingDirectory = "%~dp0%targetDir%" >> "%vbsScript%"
-echo oLink.Description = "Zen浏览器" >> "%vbsScript%"
-echo oLink.Save >> "%vbsScript%"
-
-:: 执行VBS脚本创建快捷方式
-cscript //nologo "%vbsScript%"
-
-:: 删除临时VBS脚本
-del "%vbsScript%"
-
+echo [成功] 快捷方式已创建: %lnk%
 pause
