@@ -119,6 +119,16 @@ jobs:
         prerelease: false
         files: ${{ steps.build.outputs.artifact_path }}
 
+    # 提交版本更新
+    - name: Commit version update
+      if: steps.version-check.outputs.should_build == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add last_version.txt
+        git commit -m "Update Zen version to ${{ steps.version-check.outputs.zen_version }}"
+        git push
+
   cleanup:
     if: always()
     needs: build-zen
