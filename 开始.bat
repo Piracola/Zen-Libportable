@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 setlocal
 
 set "target=%~dp0Zen\zen.exe"
