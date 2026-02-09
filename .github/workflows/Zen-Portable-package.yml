@@ -31,6 +31,20 @@ jobs:
         echo "Latest version: $latest_version"
         echo "zen_version=$latest_version" >> $env:GITHUB_OUTPUT
         
+        # 获取下载链接
+        $download_url = ""
+        foreach ($asset in $response.assets) {
+            if ($asset.name -match "zen.installer.exe") {
+                $download_url = $asset.browser_download_url
+                break
+            }
+        }
+        if (-not $download_url) {
+            # Fallback
+            $download_url = "https://github.com/zen-browser/desktop/releases/latest/download/zen.installer.exe"
+        }
+        echo "download_url=$download_url" >> $env:GITHUB_OUTPUT
+        
         # 检查触发事件类型
         $trigger_event = "${{ github.event_name }}"
         $should_build = "true"
@@ -58,65 +72,31 @@ jobs:
         echo "should_build=$should_build" >> $env:GITHUB_OUTPUT
         echo "build_reason=$build_reason" >> $env:GITHUB_OUTPUT
 
-    # 下载并解压 Zen 浏览器
-    - name: Download and Extract Zen Browser
+    # 准备构建环境
+    - name: Checkout Browser-builder
       if: steps.version-check.outputs.should_build == 'true'
-      run: |
-        # 下载 Zen 浏览器
-        $url = "https://github.com/zen-browser/desktop/releases/latest/download/zen.installer.exe"
-        $output = "$env:GITHUB_WORKSPACE\zen-installer.exe"
-        Invoke-WebRequest -Uri $url -OutFile $output
-        
-        # 解压到临时目录
-        New-Item -ItemType Directory -Force -Path "D:\zen"
-        Set-Location -Path "D:\zen"
-        7z x "$output" -y
-        
-        # 删除根目录下的setup.exe文件
-        if (Test-Path "D:\zen\setup.exe") {
-          Remove-Item -Path "D:\zen\setup.exe" -Force
-          Write-Host "已删除setup.exe文件"
-        }
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.repository_owner }}/Browser-builder
+        path: builder
 
-    # 复制 libportable 工具并创建便携版
-    - name: Create Portable Package
+    - name: Set up Python
       if: steps.version-check.outputs.should_build == 'true'
-      run: |
-        # 复制 libportable 工具
-        $targetDir = "D:\zen\core"
-        New-Item -ItemType Directory -Force -Path $targetDir
-        Copy-Item -Path "$env:GITHUB_WORKSPACE\libportable\*" -Destination $targetDir -Recurse -Force
-        
-        # 复制开始.bat到zen目录
-        Copy-Item -Path "$env:GITHUB_WORKSPACE\开始.bat" -Destination "D:\zen" -Force
-        
-        # 运行便携版创建脚本
-        Set-Location -Path $targetDir
-        $injectScript = "$targetDir\injectpe.bat"
-        if (Test-Path $injectScript) {
-          cmd /c $injectScript
-        } else {
-          Write-Error "批处理文件未找到: $injectScript"
-          exit 1
-        }
-        
-        # 等待一下确保文件操作完成
-        Start-Sleep -Seconds 2
-        
-        # 重命名文件夹
-        Set-Location -Path "D:\zen"
-        if (Test-Path "D:\zen\core") {
-          Rename-Item -Path "D:\zen\core" -NewName "Zen" -Force
-        }
-      continue-on-error: true
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
 
-    # 打包便携版文件
-    - name: Package Portable Build
+    - name: Install dependencies
       if: steps.version-check.outputs.should_build == 'true'
       run: |
-        # 打包为便携版压缩包
-        $outputZip = "$env:GITHUB_WORKSPACE\Zen.zip"
-        7z a -tzip "$outputZip" "D:\zen\*"
+        pip install -r builder/requirements.txt
+
+    # 执行 Python 构建脚本
+    - name: Build Portable Package
+      if: steps.version-check.outputs.should_build == 'true'
+      id: build
+      run: |
+        python builder/build.py --browser zen --version "${{ steps.version-check.outputs.zen_version }}" --url "${{ steps.version-check.outputs.download_url }}" --libportable libportable --launcher 开始.bat
 
     # 创建 GitHub Release 并上传文件
     - name: Create Release and Upload Package
@@ -132,13 +112,12 @@ jobs:
           这是一个自动构建的 Zen 浏览器便携版本，基于 libportable 项目。
 
           使用方法：
-          1. 下载 [Zen.zip](https://github.com/Piracola/Zen-Libportable/releases/latest/download/Zen.zip) 文件
+          1. 下载压缩包文件
           2. 解压到任意目录
           3. 运行 开始.bat 即可创建快捷方式
         draft: false
         prerelease: false
-        files: |
-          ${{ github.workspace }}\Zen.zip
+        files: ${{ steps.build.outputs.artifact_path }}
 
   cleanup:
     if: always()
