@@ -96,6 +96,11 @@ jobs:
       if: steps.version-check.outputs.should_build == 'true'
       id: build
       run: |
+        New-Item -ItemType Directory -Path libportable -Force | Out-Null
+        Copy-Item builder/upcheck64.exe libportable/upcheck64.exe -Force
+        Copy-Item builder/portable64.dll libportable/portable64.dll -Force
+        if (-not (Test-Path libportable/portable.ini)) { Copy-Item builder/portable.ini libportable/portable.ini -Force }
+        if (-not (Test-Path libportable/injectpe.bat)) { Copy-Item builder/injectpe.bat libportable/injectpe.bat -Force }
         python builder/build.py --browser zen --version "${{ steps.version-check.outputs.zen_version }}" --url "${{ steps.version-check.outputs.download_url }}" --libportable libportable --launcher 开始.bat
 
     # 创建 GitHub Release 并上传文件
