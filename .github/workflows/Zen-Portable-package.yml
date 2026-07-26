@@ -1,4 +1,7 @@
-# GitHub Actions 工作流：Zen 浏览器便携版打包
+# Zen 便携版构建
+#
+# 实际流程全部在 Browser-builder 的可复用工作流里，这里只负责触发条件和参数。
+# 需要调整构建逻辑时，请改 https://github.com/Piracola/Browser-builder
 name: Zen Portable Build
 
 on:
@@ -8,151 +11,17 @@ on:
   schedule:
     - cron: '0 0 * * *'
 
+# 定时任务和 push 撞在一起时排队执行，避免两个构建抢同一个 Release 标签。
+concurrency:
+  group: build-zen
+  cancel-in-progress: false
+
 jobs:
-  build-zen:
-    runs-on: windows-latest
+  build:
     permissions:
       contents: write
-      packages: write
-
-    steps:
-    # 检出代码仓库
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    # 检查 Zen 浏览器版本更新
-    - name: Check Zen Browser version
-      id: version-check
-      run: |
-        # 获取最新版本信息
-        $latest_url = "https://api.github.com/repos/zen-browser/desktop/releases/latest"
-        $response = Invoke-RestMethod -Uri $latest_url
-        $latest_version = $response.tag_name
-        echo "Latest version: $latest_version"
-        echo "zen_version=$latest_version" >> $env:GITHUB_OUTPUT
-        
-        # 获取下载链接
-        $download_url = ""
-        foreach ($asset in $response.assets) {
-            if ($asset.name -match "zen.installer.exe") {
-                $download_url = $asset.browser_download_url
-                break
-            }
-        }
-        if (-not $download_url) {
-            # Fallback
-            $download_url = "https://github.com/zen-browser/desktop/releases/latest/download/zen.installer.exe"
-        }
-        echo "download_url=$download_url" >> $env:GITHUB_OUTPUT
-        
-        # 检查触发事件类型
-        $trigger_event = "${{ github.event_name }}"
-        $should_build = "true"
-        $build_reason = $trigger_event
-        
-        # 定时触发时检查版本更新
-        if ($trigger_event -eq "schedule") {
-          $version_file = "last_version.txt"
-          if (Test-Path $version_file) {
-            $last_version = Get-Content $version_file
-            if ($last_version -eq $latest_version) {
-              echo "No update available. Skipping build."
-              $should_build = "false"
-              $build_reason = "no_update"
-            } else {
-              $build_reason = "version_update"
-            }
-          } else {
-            $build_reason = "first_run"
-          }
-        }
-        
-        # 保存版本信息
-        $latest_version | Out-File -FilePath "last_version.txt" -Encoding UTF8
-        echo "should_build=$should_build" >> $env:GITHUB_OUTPUT
-        echo "build_reason=$build_reason" >> $env:GITHUB_OUTPUT
-
-    # 准备构建环境
-    - name: Checkout Browser-builder
-      if: steps.version-check.outputs.should_build == 'true'
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ github.repository_owner }}/Browser-builder
-        path: builder
-
-    - name: Set up Python
-      if: steps.version-check.outputs.should_build == 'true'
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-
-    - name: Install dependencies
-      if: steps.version-check.outputs.should_build == 'true'
-      run: |
-        pip install -r builder/requirements.txt
-
-    # 执行 Python 构建脚本
-    - name: Build Portable Package
-      if: steps.version-check.outputs.should_build == 'true'
-      id: build
-      run: |
-        New-Item -ItemType Directory -Path libportable -Force | Out-Null
-        Copy-Item builder/upcheck64.exe libportable/upcheck64.exe -Force
-        Copy-Item builder/portable64.dll libportable/portable64.dll -Force
-        if (-not (Test-Path libportable/portable.ini)) { Copy-Item builder/portable.ini libportable/portable.ini -Force }
-        if (-not (Test-Path libportable/injectpe.bat)) { Copy-Item builder/injectpe.bat libportable/injectpe.bat -Force }
-        python builder/build.py --browser zen --version "${{ steps.version-check.outputs.zen_version }}" --url "${{ steps.version-check.outputs.download_url }}" --libportable libportable --launcher 开始.bat
-
-    # 创建 GitHub Release 并上传文件
-    - name: Create Release and Upload Package
-      if: steps.version-check.outputs.should_build == 'true'
-      uses: softprops/action-gh-release@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.version-check.outputs.zen_version }}
-        name: Zen Browser Portable ${{ steps.version-check.outputs.zen_version }}
-        body: |
-          Zen Browser ${{ steps.version-check.outputs.zen_version }} 便携版
-          这是一个自动构建的 Zen 浏览器便携版本，基于 libportable 项目。
-
-          使用方法：
-          1. 下载压缩包文件
-          2. 解压到任意目录
-          3. 运行 开始.bat 即可创建快捷方式
-        draft: false
-        prerelease: false
-        files: ${{ steps.build.outputs.artifact_path }}
-
-    # 提交版本更新
-    - name: Commit version update
-      if: steps.version-check.outputs.should_build == 'true'
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add last_version.txt
-        git diff --cached --quiet
-        if ($LASTEXITCODE -eq 0) {
-          Write-Host "No version file changes to commit."
-        } elseif ($LASTEXITCODE -eq 1) {
-          git commit -m "Update Zen version to ${{ steps.version-check.outputs.zen_version }}"
-          git push
-        } else {
-          exit $LASTEXITCODE
-        }
-
-  cleanup:
-    if: always()
-    needs: build-zen
-    runs-on: ubuntu-latest
-    permissions:
       actions: write
-      contents: read
-    steps:
-      - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@v2
-        with:
-          token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          retain_days: 0
-          keep_minimum_runs: 10
+    uses: Piracola/Browser-builder/.github/workflows/build-portable.yml@main
+    with:
+      browser: zen
+      release-notes-url: 'https://github.com/zen-browser/desktop/releases/tag/{version}'

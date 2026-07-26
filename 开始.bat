@@ -18,4 +18,3 @@ if %errorlevel% neq 0 (
 )
 
 echo [成功] 快捷方式已创建: %lnk%
-pause
